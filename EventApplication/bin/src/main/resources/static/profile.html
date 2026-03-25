@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Event Platform</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">EventApp</a></div>
+        <div class="nav-links" id="nav-links"></div>
+    </nav>
+
+    <div class="container">
+        <div class="form-container" style="max-width: 600px;">
+            <h2 style="margin-bottom: 1.5rem;">User Profile</h2>
+            <div id="profileDetails" style="display: none;">
+                <p><strong>Name:</strong> <span id="p-name"></span></p>
+                <p><strong>Email:</strong> <span id="p-email"></span></p>
+                <p><strong>Role:</strong> <span id="p-role"></span></p>
+            </div>
+            <p id="loadingMsg">Loading profile...</p>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/users/profile');
+                if (res.ok) {
+                    const user = await res.json();
+                    document.getElementById('p-name').innerText = user.name;
+                    document.getElementById('p-email').innerText = user.email;
+                    document.getElementById('p-role').innerText = user.role;
+                    document.getElementById('profileDetails').style.display = 'block';
+                    document.getElementById('loadingMsg').style.display = 'none';
+                } else {
+                    document.getElementById('loadingMsg').innerText = 'Please login to view profile.';
+                }
+            } catch (err) {
+                document.getElementById('loadingMsg').innerText = 'Error loading profile.';
+            }
+        });
+    </script>
+</body>
+
+</html>

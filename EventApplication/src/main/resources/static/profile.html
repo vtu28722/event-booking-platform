@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Event Platform</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .profile-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1.5rem;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-upload-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            text-align: center;
+            padding: 0.5rem 0;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+            opacity: 0;
+        }
+
+        .avatar-container:hover .avatar-upload-overlay {
+            opacity: 1;
+        }
+
+        .profile-stat-box {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .profile-stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .profile-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">EventApp</a></div>
+        <div class="nav-links" id="nav-links"></div>
+    </nav>
+
+    <div class="container" style="max-width: 1000px;">
+        <h2 style="margin-bottom: 2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">My
+            Dashboard</h2>
+
+        <p id="loadingMsg" style="text-align: center;">Loading profile data...</p>
+
+        <div id="profileDetails" class="profile-layout" style="display: none;">
+            <!-- Left Column: Profile Card -->
+            <div class="card" style="text-align: center;">
+                <div class="card-body">
+                    <div class="avatar-container">
+                        <img id="avatarImage" src="https://ui-avatars.com/api/?name=User&background=random&size=150"
+                            alt="Avatar" class="avatar-img">
+                        <label for="avatarUpload" class="avatar-upload-overlay">
+                            Change Picture
+                        </label>
+                        <input type="file" id="avatarUpload" accept="image/*" style="display: none;"
+                            onchange="handleAvatarUpload(event)">
+                    </div>
+
+                    <h3 id="p-name-display" style="margin-bottom: 0.5rem;">Name</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;"><span id="p-role-badge"
+                            class="badge">ROLE</span></p>
+
+                    <form id="updateProfileForm" style="text-align: left; margin-top: 1.5rem;">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="inputName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email (Read-Only)</label>
+                            <input type="email" id="inputEmail" disabled
+                                style="background-color: var(--background-color);">
+                        </div>
+                        <button type="submit" class="btn" style="width: 100%;" id="updateBtn">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Stats & Activity -->
+            <div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+                    <div class="profile-stat-box">
+                        <div class="profile-stat-number" id="stat-total-bookings">0</div>
+                        <div
+                            style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">
+                            Total Tickets</div>
+                    </div>
+                    <div class="profile-stat-box">
+                        <div class="profile-stat-number" id="stat-total-spent">$0</div>
+                        <div
+                            style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">
+                            Total Spent</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header-gradient" style="padding: 1rem; font-weight: 600; color: white;">
+                        Recent Activity
+                    </div>
+                    <div class="card-body" id="recentActivityList">
+                        <p style="color: var(--text-muted);">Loading activity...</p>
+                    </div>
+                    <div class="card-footer" style="text-align: center;">
+                        <a href="/my-bookings.html"
+                            style="color: var(--primary-color); text-decoration: none; font-weight: 500;">View Full
+                            Booking History →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let currentProfilePictureBase64 = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProfileData();
+        });
+
+        async function loadProfileData() {
+            try {
+                const res = await fetch('/api/users/profile');
+                if (res.ok) {
+                    const user = await res.json();
+
+                    // Populate Form & UI
+                    document.getElementById('inputName').value = user.name;
+                    document.getElementById('p-name-display').innerText = user.name;
+                    document.getElementById('inputEmail').value = user.email;
+                    document.getElementById('p-role-badge').innerText = user.role.replace('ROLE_', '');
+
+                    if (user.profilePicture) {
+                        currentProfilePictureBase64 = user.profilePicture;
+                        document.getElementById('avatarImage').src = user.profilePicture;
+                    } else {
+                        document.getElementById('avatarImage').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=150`;
+                    }
+
+                    document.getElementById('profileDetails').style.display = 'grid';
+                    document.getElementById('loadingMsg').style.display = 'none';
+
+                    // Fetch Bookings for Stats
+                    fetchBookingStats();
+
+                } else {
+                    document.getElementById('loadingMsg').innerText = 'Please login to view profile.';
+                }
+            } catch (err) {
+                document.getElementById('loadingMsg').innerText = 'Error loading profile.';
+            }
+        }
+
+        async function fetchBookingStats() {
+            try {
+                const res = await fetch('/api/bookings/my-bookings');
+                if (res.ok) {
+                    const bookings = await res.json();
+
+                    let totalTickets = 0;
+                    let totalSpent = 0;
+                    const activityHtml = [];
+
+                    bookings.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+
+                    bookings.forEach((b, index) => {
+                        totalTickets += b.numberOfTickets;
+                        totalSpent += b.totalAmount;
+
+                        if (index < 3) {
+                            activityHtml.push(`
+                                <div style="padding: 1rem 0; ${index !== 2 ? 'border-bottom: 1px solid var(--border-color);' : ''}">
+                                    <div style="font-weight: 500;">Purchased ${b.numberOfTickets} tickets for ${b.event.title}</div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                                        $${b.totalAmount.toFixed(2)} • ${new Date(b.bookingDate).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            `);
+                        }
+                    });
+
+                    document.getElementById('stat-total-bookings').innerText = totalTickets;
+                    document.getElementById('stat-total-spent').innerText = '$' + totalSpent.toFixed(2);
+
+                    if (activityHtml.length > 0) {
+                        document.getElementById('recentActivityList').innerHTML = activityHtml.join('');
+                    } else {
+                        document.getElementById('recentActivityList').innerHTML = '<p style="color: var(--text-muted);">No bookings yet. Head over to the Events page to book your first ticket!</p>';
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load bookings");
+            }
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Optional: validate size
+            if (file.size > 2 * 1024 * 1024) { // 2MB
+                showToast('Image size should be less than 2MB', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                currentProfilePictureBase64 = e.target.result;
+                document.getElementById('avatarImage').src = currentProfilePictureBase64;
+                showToast('Image selected! Click Save Changes to update.', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('updateProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('updateBtn');
+            btn.innerText = 'Saving...';
+            btn.disabled = true;
+
+            const newName = document.getElementById('inputName').value;
+
+            try {
+                const res = await fetch('/api/users/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newName,
+                        profilePicture: currentProfilePictureBase64
+                    })
+                });
+
+                if (res.ok) {
+                    showToast('Profile updated successfully!');
+                    await loadProfileData(); // refresh UI
+                    updateNavbar(true, newName); // update global navbar name
+                } else {
+                    showToast('Failed to update profile', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            } finally {
+                btn.innerText = 'Save Changes';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

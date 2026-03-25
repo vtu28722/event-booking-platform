@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Platform</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">EventApp</a></div>
+        <div class="nav-links" id="nav-links">
+            <!-- Populated by JS -->
+        </div>
+    </nav>
+
+    <div class="container hero">
+        <h1>Experience Amazing Events</h1>
+        <p>Book your spot at the most exclusive tech conferences, music festivals, and workshops around the globe.</p>
+        <div style="margin-top: 2rem;">
+            <a href="/events.html" class="btn"
+                style="padding: 1rem 2.5rem; font-size: 1.1rem; border-radius: 9999px;">Browse Upcoming Events</a>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add staggered animation to hero elements
+            const heroElements = document.querySelectorAll('.hero > *');
+            heroElements.forEach((el, index) => {
+                el.style.opacity = '0';
+                el.style.animation = `fadeIn 0.6s ease-out ${index * 0.15 + 0.2}s forwards`;
+            });
+        });
+    </script>

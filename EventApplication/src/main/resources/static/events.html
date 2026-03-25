@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Events - Event Platform</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .event-actions {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">EventApp</a></div>
+        <div class="nav-links" id="nav-links"></div>
+    </nav>
+
+    <div class="container">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            <h2 style="margin: 0;">Upcoming Events</h2>
+            <div style="display: flex; gap: 10px; width: 300px;">
+                <input type="text" id="searchInput" placeholder="Search events by title or venue..."
+                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+                <button id="searchBtn" class="btn" style="padding: 0.5rem 1rem;">Search</button>
+            </div>
+        </div>
+
+        <div id="events-loader">Loading events...</div>
+        <div class="events-grid" id="eventsList" style="display: none;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let allEvents = [];
+        let globalIsAdmin = false;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Check auth first to determine if we show delete button (we'll just fetch user role if logged in)
+                const sessionRes = await fetch('/api/users/profile');
+                if (sessionRes.ok) {
+                    const user = await sessionRes.json();
+                    globalIsAdmin = user.role === 'ROLE_ADMIN';
+                }
+
+                const res = await fetch('/api/events');
+                if (!res.ok) throw new Error("Failed to fetch events");
+
+                allEvents = await res.json();
+
+                document.getElementById('events-loader').style.display = 'none';
+
+                // Add event listener to search input
+                document.getElementById('searchInput').addEventListener('input', filterEvents);
+                document.getElementById('searchBtn').addEventListener('click', filterEvents);
+
+                renderEvents(allEvents);
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('events-loader').innerText = 'Failed to load events. Make sure you are connected to the server.';
+            }
+        });
+
+        function filterEvents() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allEvents.filter(event =>
+                event.title.toLowerCase().includes(query) ||
+                event.venue.toLowerCase().includes(query) ||
+                (event.description && event.description.toLowerCase().includes(query))
+            );
+            renderEvents(filtered);
+        }
+
+        function renderEvents(eventsToRender) {
+            const container = document.getElementById('eventsList');
+            container.style.display = 'grid';
+            container.innerHTML = ''; // Clear existing events
+
+            if (eventsToRender.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1 / -1; padding: 2rem; text-align: center; background: white; border-radius: var(--border-radius); box-shadow: var(--shadow-sm);"><h3>No events found.</h3><p>Try a different search term or check back later.</p></div>';
+                return;
+            }
+
+            eventsToRender.forEach(event => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                let actionsHtml = `<a href="/book-ticket.html?id=${event.id}" class="btn" style="flex:1;">Book Ticket</a>`;
+
+                if (globalIsAdmin) {
+                    actionsHtml += `<button onclick="deleteEvent(${event.id})" class="btn btn-danger">Delete</button>`;
+                }
+
+                const isSoldOut = event.availableSeats === 0;
+                const badgeHtml = isSoldOut ? `<div class="card-badge badge-sold-out">Sold Out</div>` : `<div class="card-badge">Available</div>`;
+
+                card.innerHTML = `
+                    <div class="card-header-gradient">
+                        ${badgeHtml}
+                    </div>
+                    <div class="card-body">
+                        <div class="card-title">${event.title}</div>
+                        <div class="card-meta">
+                            <span>📅 ${event.date}</span>
+                            <span>📍 ${event.venue}</span>
+                        </div>
+                        <p class="card-text">${event.description}</p>
+                        <div class="card-footer">
+                            <div class="event-price">$${event.price.toFixed(2)}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right;">
+                                ${event.availableSeats} / ${event.totalSeats}<br>seats left
+                            </div>
+                        </div>
+                        <div class="event-actions" style="margin-top: 1.5rem;">
+                            ${isSoldOut ? (globalIsAdmin ? `<button onclick="deleteEvent(${event.id})" class="btn btn-danger" style="width:100%;">Delete Event</button>` : `<button class="btn btn-secondary" style="width:100%; opacity: 0.5; cursor: not-allowed;" disabled>Fully Booked</button>`) : actionsHtml}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('Are you sure you want to delete this event?')) return;
+            try {
+                const res = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Event deleted');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const err = await res.text();
+                    showToast(err || 'Failed to delete', 'error');
+                }
+            } catch (e) {
+                showToast('Network error', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

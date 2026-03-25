@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Ticket - Event Platform</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">EventApp</a></div>
+        <div class="nav-links" id="nav-links"></div>
+    </nav>
+
+    <div class="container">
+        <div class="form-container">
+            <h2 style="margin-bottom: 1.5rem; text-align: center;">Book Tickets</h2>
+            <div id="eventDetails"
+                style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 0.5rem; text-align: center;">
+                <h3 id="e-title">Loading event...</h3>
+                <p id="e-info"></p>
+                <p style="font-weight: bold; color: var(--primary-color);" id="e-price"></p>
+            </div>
+
+            <form id="bookForm">
+                <input type="hidden" id="eventIdInput" name="eventId">
+                <div class="form-group">
+                    <label>Number of Tickets</label>
+                    <input type="number" id="ticketCount" name="numberOfTickets" min="1" value="1" required>
+                </div>
+                <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; text-align: center;">
+                    Total: $<span id="calcTotal">0.00</span>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Confirm Booking</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let eventPrice = 0;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventId = urlParams.get('id');
+
+            if (!eventId) {
+                showToast('No event selected', 'error');
+                return;
+            }
+
+            document.getElementById('eventIdInput').value = eventId;
+
+            try {
+                const res = await fetch(`/api/events/${eventId}`);
+                if (res.ok) {
+                    const event = await res.json();
+                    document.getElementById('e-title').innerText = event.title;
+                    document.getElementById('e-info').innerText = `${event.date} @ ${event.venue}`;
+                    document.getElementById('e-price').innerText = `Price: $${event.price.toFixed(2)}${event.availableSeats > 0 ? '' : ' (Sold Out)'}`;
+
+                    eventPrice = event.price;
+                    updateTotal();
+                } else {
+                    document.getElementById('e-title').innerText = 'Event not found.';
+                }
+            } catch (err) {
+                document.getElementById('e-title').innerText = 'Error loading event.';
+            }
+
+            document.getElementById('ticketCount').addEventListener('input', updateTotal);
+
+            handleFormSubmit('bookForm', '/bookings', '/my-bookings.html');
+        });
+
+        function updateTotal() {
+            const count = parseInt(document.getElementById('ticketCount').value) || 0;
+            const total = count * eventPrice;
+            document.getElementById('calcTotal').innerText = total.toFixed(2);
+        }
+    </script>
+</body>
+
+</html>
